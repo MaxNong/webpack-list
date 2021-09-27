@@ -2,9 +2,7 @@ const fs = require('fs')
 const path = require('path');
 const parser = require("@babel/parser");
 const traverse = require('@babel/traverse').default
-const { exec } = require("shelljs");
 const { resolve } = require('path');
-const {parseFile, parseFiles, generateCode} = require("./parseFileUtils");
 
 let ID = 0;
 let resultModules = {}
@@ -43,11 +41,6 @@ function getDependencies(loaderedCode) {
       if (/.\/|..\//g.test(importModuleName)) {
         modules.push(importModuleName);
       } else {
-        // 这里可以预加载
-        // const cachePath = resolve(__dirname, "../node_modules/.mypack");
-        // console.log("预加载模块...")
-        // await exec(`mkdir -p ${cachePath} && npm install --prefix ${cachePath} ${importModuleName}`);
-
         // 使用@mypackModule标记第三方模块
         const fullPath = `@mypackModule/${importModuleName}`;
         modules.push(fullPath);
@@ -76,7 +69,6 @@ const createAsset = async function (entryPath, loaders) {
   } else {
     // 读取源代码
     const path = resolve(__dirname, "../../", entryPath);
-    console.log(path, 5555555555)
     let fileStr = fs.readFileSync(path, 'utf8');
 
     // 使用loader转义获取源代码
@@ -120,20 +112,15 @@ const getAllChunks = async function (entryModule, loaders) {
 
 // 获取包的相互依赖结构
 const createAssetArr = async function (entryPath, buildConfig) {
-  const modules= parseFiles(entryPath);
-  const codes = generateCode(modules, entryPath);
-  fs.writeFileSync(path.join(buildConfig.output.path, buildConfig.output.filename), codes);
-  console.log(modules, 77777)
-  // const { loaders } = buildConfig;
+  const { loaders } = buildConfig;
 
-  // // 获取入口module
-  // let entryModule = await createAsset(entryPath, loaders);
-  // console.log(entryModule);
-  // console.log("entryModule===================");
+  // 获取入口module
+  let entryModule = await createAsset(entryPath, loaders);
+  console.log(entryModule);
+  console.log("entryModule===================");
 
-  // // 通过入口获取所有的modules
-  // await getAllChunks(entryModule, loaders);
-  // console.log(resultModules, 9999)
+  // 通过入口获取所有的modules
+  await getAllChunks(entryModule, loaders);
 }
 
 function createBundleJs(moduleArr, outputConfig) {
@@ -153,7 +140,7 @@ function createBundleJs(moduleArr, outputConfig) {
       return exports
     }
     handle(0)`
-  fs.writeFileSync(`${path}/${filename}`, output) // 写到当前路径下的 bundle.js 文件
+  fs.writeFileSync(`${path}/${filename}`, output)
 }
 
 const errorTip = function (text) {
